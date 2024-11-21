@@ -15,6 +15,7 @@ export default function Page() {
   const [food, setFood] = useState<Position>({ x: 5, y: 5 });
   const [direction, setDirection] = useState<Direction>('RIGHT');
   const [gameOver, setGameOver] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
   const [score, setScore] = useState(0);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -36,7 +37,7 @@ export default function Page() {
   }, []);
 
   const moveSnake = useCallback(() => {
-    if (gameOver) return;
+    if (gameOver || !gameStarted) return;
 
     setSnake((prevSnake) => {
       const newSnake = [...prevSnake];
@@ -81,10 +82,12 @@ export default function Page() {
 
       return newSnake;
     });
-  }, [direction, food, gameOver, generateFood]);
+  }, [direction, food, gameOver, generateFood, gameStarted]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      if (!gameStarted) return;
+      
       switch (e.key) {
         case 'ArrowUp':
           setDirection(prev => prev !== 'DOWN' ? 'UP' : prev);
@@ -111,6 +114,8 @@ export default function Page() {
   }, [moveSnake]);
 
   const saveScore = () => {
+    if (score === 0) return;
+    
     const newRecord: HistoryRecord = {
       score,
       date: new Date().toLocaleString('zh-CN'),
@@ -122,10 +127,18 @@ export default function Page() {
     localStorage.setItem('snakeGameHistory', JSON.stringify(updatedHistory));
   };
 
+  const startGame = () => {
+    setSnake([{ x: 10, y: 10 }]);
+    setFood({ x: 5, y: 5 });
+    setDirection('RIGHT');
+    setGameOver(false);
+    setScore(0);
+    setGameStarted(true);
+  };
+
   const resetGame = () => {
-    if (score > 0) {
-      saveScore();
-    }
+    saveScore();
+    setGameStarted(false);
     setSnake([{ x: 10, y: 10 }]);
     setFood({ x: 5, y: 5 });
     setDirection('RIGHT');
@@ -159,6 +172,13 @@ export default function Page() {
               />
             );
           })
+        )}
+        {!gameStarted && !gameOver && (
+          <div className={styles.startOverlay}>
+            <button onClick={startGame} className={styles.startButton}>
+              开始游戏
+            </button>
+          </div>
         )}
       </div>
       {gameOver && (
