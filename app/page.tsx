@@ -5,6 +5,10 @@ import styles from './page.module.css';
 
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type Position = { x: number; y: number };
+type HistoryRecord = {
+  score: number;
+  date: string;
+};
 
 export default function Page() {
   const [snake, setSnake] = useState<Position[]>([{ x: 10, y: 10 }]);
@@ -12,6 +16,16 @@ export default function Page() {
   const [direction, setDirection] = useState<Direction>('RIGHT');
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Load history from localStorage on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('snakeGameHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
 
   const generateFood = useCallback(() => {
     const newFood = {
@@ -96,7 +110,22 @@ export default function Page() {
     };
   }, [moveSnake]);
 
+  const saveScore = () => {
+    const newRecord: HistoryRecord = {
+      score,
+      date: new Date().toLocaleString('zh-CN'),
+    };
+    const updatedHistory = [...history, newRecord]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10); // Keep only top 10 scores
+    setHistory(updatedHistory);
+    localStorage.setItem('snakeGameHistory', JSON.stringify(updatedHistory));
+  };
+
   const resetGame = () => {
+    if (score > 0) {
+      saveScore();
+    }
     setSnake([{ x: 10, y: 10 }]);
     setFood({ x: 5, y: 5 });
     setDirection('RIGHT');
@@ -107,7 +136,15 @@ export default function Page() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>贪吃蛇</h1>
-      <div className={styles.score}>得分: {score}</div>
+      <div className={styles.header}>
+        <div className={styles.score}>得分: {score}</div>
+        <button 
+          className={styles.historyButton}
+          onClick={() => setShowHistory(true)}
+        >
+          历史记录
+        </button>
+      </div>
       <div className={styles.gameBoard}>
         {Array.from({ length: 20 }, (_, y) =>
           Array.from({ length: 20 }, (_, x) => {
@@ -127,7 +164,34 @@ export default function Page() {
       {gameOver && (
         <div className={styles.gameOver}>
           <h2>游戏结束!</h2>
+          <p>最终得分: {score}</p>
           <button onClick={resetGame}>重新开始</button>
+        </div>
+      )}
+      {showHistory && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <h2>历史最高分</h2>
+            <div className={styles.historyList}>
+              {history.length > 0 ? (
+                history.map((record, index) => (
+                  <div key={index} className={styles.historyItem}>
+                    <span className={styles.rank}>#{index + 1}</span>
+                    <span className={styles.historyScore}>{record.score}分</span>
+                    <span className={styles.historyDate}>{record.date}</span>
+                  </div>
+                ))
+              ) : (
+                <p>暂无记录</p>
+              )}
+            </div>
+            <button 
+              className={styles.closeButton}
+              onClick={() => setShowHistory(false)}
+            >
+              关闭
+            </button>
+          </div>
         </div>
       )}
     </div>
