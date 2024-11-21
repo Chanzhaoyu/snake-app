@@ -16,6 +16,7 @@ export default function Page() {
   const [direction, setDirection] = useState<Direction>('RIGHT');
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -37,7 +38,7 @@ export default function Page() {
   }, []);
 
   const moveSnake = useCallback(() => {
-    if (gameOver || !gameStarted) return;
+    if (gameOver || !gameStarted || isPaused) return;
 
     setSnake((prevSnake) => {
       const newSnake = [...prevSnake];
@@ -82,10 +83,28 @@ export default function Page() {
 
       return newSnake;
     });
-  }, [direction, food, gameOver, generateFood, gameStarted]);
+  }, [direction, food, gameOver, generateFood, gameStarted, isPaused]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Start game with 'S' key when not started
+      if (e.key.toLowerCase() === 's' && !gameStarted && !gameOver) {
+        startGame();
+        return;
+      }
+
+      // Toggle history with 'H' key
+      if (e.key.toLowerCase() === 'h') {
+        setShowHistory(prev => !prev);
+        return;
+      }
+
+      // Restart with 'R' key when game is over
+      if (e.key.toLowerCase() === 'r' && gameOver) {
+        resetGame();
+        return;
+      }
+
       if (!gameStarted) return;
       
       switch (e.key) {
@@ -101,6 +120,24 @@ export default function Page() {
         case 'ArrowRight':
           setDirection(prev => prev !== 'LEFT' ? 'RIGHT' : prev);
           break;
+        case ' ': // Spacebar
+          e.preventDefault(); // Prevent page scrolling
+          if (gameStarted && !gameOver) {
+            setIsPaused(prev => !prev);
+          }
+          break;
+        case 'Escape':
+          if (showHistory) {
+            setShowHistory(false);
+          } else if (gameStarted && !gameOver) {
+            setIsPaused(true);
+          }
+          break;
+        case 'Enter':
+          if (gameStarted && !gameOver && isPaused) {
+            setIsPaused(false);
+          }
+          break;
       }
     };
 
@@ -111,7 +148,7 @@ export default function Page() {
       window.removeEventListener('keydown', handleKeyPress);
       clearInterval(gameInterval);
     };
-  }, [moveSnake]);
+  }, [moveSnake, gameStarted, gameOver, isPaused, showHistory]);
 
   const saveScore = () => {
     if (score === 0) return;
@@ -134,6 +171,7 @@ export default function Page() {
     setGameOver(false);
     setScore(0);
     setGameStarted(true);
+    setIsPaused(false);
   };
 
   const resetGame = () => {
@@ -144,6 +182,13 @@ export default function Page() {
     setDirection('RIGHT');
     setGameOver(false);
     setScore(0);
+    setIsPaused(false);
+  };
+
+  const togglePause = () => {
+    if (gameStarted && !gameOver) {
+      setIsPaused(prev => !prev);
+    }
   };
 
   return (
@@ -151,12 +196,24 @@ export default function Page() {
       <h1 className={styles.title}>贪吃蛇</h1>
       <div className={styles.header}>
         <div className={styles.score}>得分: {score}</div>
-        <button 
-          className={styles.historyButton}
-          onClick={() => setShowHistory(true)}
-        >
-          历史记录
-        </button>
+        <div className={styles.controls}>
+          {gameStarted && !gameOver && (
+            <button 
+              className={styles.controlButton}
+              onClick={togglePause}
+              title="空格键暂停/继续"
+            >
+              {isPaused ? '继续 (Enter)' : '暂停 (Space)'}
+            </button>
+          )}
+          <button 
+            className={styles.historyButton}
+            onClick={() => setShowHistory(true)}
+            title="按 H 键查看历史记录"
+          >
+            历史记录 (H)
+          </button>
+        </div>
       </div>
       <div className={styles.gameBoard}>
         {Array.from({ length: 20 }, (_, y) =>
@@ -175,9 +232,29 @@ export default function Page() {
         )}
         {!gameStarted && !gameOver && (
           <div className={styles.startOverlay}>
-            <button onClick={startGame} className={styles.startButton}>
-              开始游戏
-            </button>
+            <div className={styles.startContent}>
+              <button 
+                onClick={startGame} 
+                className={styles.startButton}
+                title="按 S 键开始游戏"
+              >
+                开始游戏 (S)
+              </button>
+              <div className={styles.keyboardHints}>
+                <p>⬆️⬇️⬅️➡️ 控制方向</p>
+                <p>Space 暂停/继续</p>
+                <p>H 历史记录</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {isPaused && (
+          <div className={styles.pauseOverlay}>
+            <div className={styles.pauseContent}>
+              <h2>游戏暂停</h2>
+              <p>按 Enter 继续游戏</p>
+              <p>按 Esc 保持暂停</p>
+            </div>
           </div>
         )}
       </div>
@@ -185,7 +262,12 @@ export default function Page() {
         <div className={styles.gameOver}>
           <h2>游戏结束!</h2>
           <p>最终得分: {score}</p>
-          <button onClick={resetGame}>重新开始</button>
+          <button 
+            onClick={resetGame}
+            title="按 R 键重新开始"
+          >
+            重新开始 (R)
+          </button>
         </div>
       )}
       {showHistory && (
@@ -205,6 +287,7 @@ export default function Page() {
                 <p>暂无记录</p>
               )}
             </div>
+            <p className={styles.modalHint}>按 Esc 关闭</p>
             <button 
               className={styles.closeButton}
               onClick={() => setShowHistory(false)}

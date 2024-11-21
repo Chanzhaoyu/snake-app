@@ -18,11 +18,34 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
+  width: 100%;
+  max-width: 500px;
+  justify-content: space-between;
 }
 
 .score {
   font-size: 1.5rem;
   color: #666;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.controlButton {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #FF9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.controlButton:hover {
+  background-color: #F57C00;
 }
 
 .historyButton {
@@ -131,6 +154,14 @@
   text-align: center;
 }
 
+.modalHint {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+  font-style: italic;
+}
+
 .historyList {
   margin-bottom: 1.5rem;
 }
@@ -195,6 +226,57 @@
   border-radius: 8px;
 }
 
+.startContent {
+  text-align: center;
+}
+
+.keyboardHints {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.keyboardHints p {
+  color: white;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.pauseOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  backdrop-filter: blur(3px);
+}
+
+.pauseContent {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pauseContent h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.pauseContent p {
+  color: #666;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
 .startButton {
   padding: 1rem 2rem;
   font-size: 1.25rem;
@@ -205,6 +287,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  margin-bottom: 1rem;
 }
 
 .startButton:hover {
