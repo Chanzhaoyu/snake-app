@@ -116,6 +116,18 @@ export default function Page() {
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Handle Escape key first for modal closing
+      if (e.key === 'Escape') {
+        if (showHistory) {
+          setShowHistory(false);
+          return;
+        }
+        if (gameStarted && !gameOver) {
+          setIsPaused(true);
+        }
+        return;
+      }
+
       // Start game with 'S' key when not started
       if (e.key.toLowerCase() === 's' && !gameStarted && !gameOver) {
         startGame();
@@ -153,13 +165,6 @@ export default function Page() {
           e.preventDefault(); // Prevent page scrolling
           if (gameStarted && !gameOver) {
             setIsPaused(prev => !prev);
-          }
-          break;
-        case 'Escape':
-          if (showHistory) {
-            setShowHistory(false);
-          } else if (gameStarted && !gameOver) {
-            setIsPaused(true);
           }
           break;
         case 'Enter':
