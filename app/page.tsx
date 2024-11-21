@@ -8,6 +8,30 @@ type Position = { x: number; y: number };
 type HistoryRecord = {
   score: number;
   date: string;
+  difficulty: string;
+};
+
+type Difficulty = 'easy' | 'normal' | 'hard';
+
+const DIFFICULTY_SETTINGS = {
+  easy: {
+    speed: 200,
+    scoreMultiplier: 1,
+    label: '简单',
+    boardSize: 15
+  },
+  normal: {
+    speed: 150,
+    scoreMultiplier: 2,
+    label: '普通',
+    boardSize: 20
+  },
+  hard: {
+    speed: 100,
+    scoreMultiplier: 3,
+    label: '困难',
+    boardSize: 25
+  }
 };
 
 export default function Page() {
@@ -22,6 +46,8 @@ export default function Page() {
   const [showHistory, setShowHistory] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+  const [showDifficultySelect, setShowDifficultySelect] = useState(false);
 
   // Load history from localStorage on component mount
   useEffect(() => {
@@ -59,12 +85,12 @@ export default function Page() {
   }, [loadingProgress]);
 
   const generateFood = useCallback(() => {
-    const newFood = {
-      x: Math.floor(Math.random() * 20),
-      y: Math.floor(Math.random() * 20),
+    const newFood: Position = {
+      x: Math.floor(Math.random() * DIFFICULTY_SETTINGS[difficulty].boardSize),
+      y: Math.floor(Math.random() * DIFFICULTY_SETTINGS[difficulty].boardSize)
     };
     setFood(newFood);
-  }, []);
+  }, [difficulty]);
 
   const moveSnake = useCallback(() => {
     if (gameOver || !gameStarted || isPaused) return;
@@ -89,7 +115,8 @@ export default function Page() {
       }
 
       // Check wall collision
-      if (head.x < 0 || head.x >= 20 || head.y < 0 || head.y >= 20) {
+      const boardSize = DIFFICULTY_SETTINGS[difficulty].boardSize;
+      if (head.x < 0 || head.x >= boardSize || head.y < 0 || head.y >= boardSize) {
         setGameOver(true);
         return prevSnake;
       }
@@ -104,7 +131,7 @@ export default function Page() {
 
       // Check if snake ate food
       if (head.x === food.x && head.y === food.y) {
-        setScore(prev => prev + 1);
+        setScore(prev => prev + DIFFICULTY_SETTINGS[difficulty].scoreMultiplier);
         generateFood();
       } else {
         newSnake.pop();
@@ -112,7 +139,7 @@ export default function Page() {
 
       return newSnake;
     });
-  }, [direction, food, gameOver, generateFood, gameStarted, isPaused]);
+  }, [direction, food, gameOver, generateFood, gameStarted, isPaused, difficulty]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -122,8 +149,28 @@ export default function Page() {
           setShowHistory(false);
           return;
         }
+        if (showDifficultySelect) {
+          setShowDifficultySelect(false);
+          return;
+        }
         if (gameStarted && !gameOver) {
           setIsPaused(true);
+        }
+        return;
+      }
+
+      // Handle difficulty selection shortcuts
+      if (showDifficultySelect) {
+        switch (e.key) {
+          case '1':
+            startGameWithDifficulty('easy');
+            return;
+          case '2':
+            startGameWithDifficulty('normal');
+            return;
+          case '3':
+            startGameWithDifficulty('hard');
+            return;
         }
         return;
       }
@@ -176,13 +223,13 @@ export default function Page() {
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    const gameInterval = setInterval(moveSnake, 150);
+    const gameInterval = setInterval(moveSnake, DIFFICULTY_SETTINGS[difficulty].speed);
 
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
       clearInterval(gameInterval);
     };
-  }, [moveSnake, gameStarted, gameOver, isPaused, showHistory]);
+  }, [moveSnake, gameStarted, gameOver, isPaused, showHistory, difficulty, showDifficultySelect]);
 
   const saveScore = () => {
     if (score === 0) return;
@@ -190,33 +237,43 @@ export default function Page() {
     const newRecord: HistoryRecord = {
       score,
       date: new Date().toLocaleString('zh-CN'),
+      difficulty: DIFFICULTY_SETTINGS[difficulty].label
     };
     const updatedHistory = [...history, newRecord]
       .sort((a, b) => b.score - a.score)
-      .slice(0, 10); // Keep only top 10 scores
+      .slice(0, 10);
     setHistory(updatedHistory);
     localStorage.setItem('snakeGameHistory', JSON.stringify(updatedHistory));
   };
 
   const startGame = () => {
-    setSnake([{ x: 10, y: 10 }]);
-    setFood({ x: 5, y: 5 });
+    setShowDifficultySelect(true);
+  };
+
+  const startGameWithDifficulty = (selectedDifficulty: Difficulty) => {
+    const boardSize = DIFFICULTY_SETTINGS[selectedDifficulty].boardSize;
+    setDifficulty(selectedDifficulty);
+    // Place snake in the middle of the board
+    const startX = Math.floor(boardSize / 2);
+    const startY = Math.floor(boardSize / 2);
+    setSnake([{ x: startX, y: startY }]);
+    // Place food away from the snake
+    setFood({ 
+      x: Math.floor(Math.random() * (boardSize / 2)), 
+      y: Math.floor(Math.random() * (boardSize / 2))
+    });
     setDirection('RIGHT');
     setGameOver(false);
     setScore(0);
     setGameStarted(true);
     setIsPaused(false);
+    setShowDifficultySelect(false);
   };
 
   const resetGame = () => {
     saveScore();
     setGameStarted(false);
-    setSnake([{ x: 10, y: 10 }]);
-    setFood({ x: 5, y: 5 });
-    setDirection('RIGHT');
-    setGameOver(false);
-    setScore(0);
-    setIsPaused(false);
+    setShowDifficultySelect(true);
   };
 
   const togglePause = () => {
@@ -252,7 +309,10 @@ export default function Page() {
         <>
           <h1 className={styles.title}>贪吃蛇</h1>
           <div className={styles.header}>
-            <div className={styles.score}>得分: {score}</div>
+            <div className={styles.score}>
+              <div>难度: {DIFFICULTY_SETTINGS[difficulty].label}</div>
+              <div>得分: {score}</div>
+            </div>
             <div className={styles.controls}>
               {gameStarted && !gameOver && (
                 <button 
@@ -272,22 +332,26 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <div className={styles.gameBoard}>
-            {Array.from({ length: 20 }, (_, y) =>
-              Array.from({ length: 20 }, (_, x) => {
-                const isSnake = snake.some(segment => segment.x === x && segment.y === y);
-                const isFood = food.x === x && food.y === y;
-                return (
-                  <div
-                    key={`${x}-${y}`}
-                    className={`${styles.cell} ${isSnake ? styles.snake : ''} ${
-                      isFood ? styles.food : ''
-                    }`}
-                  />
-                );
-              })
-            )}
-            {!gameStarted && !gameOver && (
+          <div className={styles.gameBoard} style={{
+            gridTemplateColumns: `repeat(${DIFFICULTY_SETTINGS[difficulty].boardSize}, 1fr)`,
+            width: `${Math.min(600, window.innerWidth - 40)}px`,
+            height: `${Math.min(600, window.innerWidth - 40)}px`
+          }}>
+            {Array.from({ length: DIFFICULTY_SETTINGS[difficulty].boardSize * DIFFICULTY_SETTINGS[difficulty].boardSize }).map((_, index) => {
+              const x = index % DIFFICULTY_SETTINGS[difficulty].boardSize;
+              const y = Math.floor(index / DIFFICULTY_SETTINGS[difficulty].boardSize);
+              const isSnake = snake.some(segment => segment.x === x && segment.y === y);
+              const isFood = food.x === x && food.y === y;
+              return (
+                <div
+                  key={`${x}-${y}`}
+                  className={`${styles.cell} ${isSnake ? styles.snake : ''} ${
+                    isFood ? styles.food : ''
+                  }`}
+                />
+              );
+            })}
+            {!gameStarted && !gameOver && !showDifficultySelect && (
               <div className={styles.startOverlay}>
                 <div className={styles.startContent}>
                   <button 
@@ -305,6 +369,37 @@ export default function Page() {
                 </div>
               </div>
             )}
+            {showDifficultySelect && (
+              <div className={styles.difficultyOverlay}>
+                <div className={styles.difficultyContent}>
+                  <h2>选择难度</h2>
+                  <div className={styles.difficultyButtons}>
+                    <button
+                      className={`${styles.difficultyButton} ${styles.easyButton}`}
+                      onClick={() => startGameWithDifficulty('easy')}
+                    >
+                      简单 <span className={styles.shortcutKey}>(1)</span>
+                      <span className={styles.difficultyDesc}>速度慢 / 基础分数</span>
+                    </button>
+                    <button
+                      className={`${styles.difficultyButton} ${styles.normalButton}`}
+                      onClick={() => startGameWithDifficulty('normal')}
+                    >
+                      普通 <span className={styles.shortcutKey}>(2)</span>
+                      <span className={styles.difficultyDesc}>中等速度 / 双倍分数</span>
+                    </button>
+                    <button
+                      className={`${styles.difficultyButton} ${styles.hardButton}`}
+                      onClick={() => startGameWithDifficulty('hard')}
+                    >
+                      困难 <span className={styles.shortcutKey}>(3)</span>
+                      <span className={styles.difficultyDesc}>高速 / 三倍分数</span>
+                    </button>
+                  </div>
+                  <p className={styles.difficultyHint}>按 1-3 选择难度 / Esc 返回</p>
+                </div>
+              </div>
+            )}
             {isPaused && (
               <div className={styles.pauseOverlay}>
                 <div className={styles.pauseContent}>
@@ -319,6 +414,7 @@ export default function Page() {
             <div className={styles.gameOver}>
               <h2>游戏结束!</h2>
               <p>最终得分: {score}</p>
+              <p>难度: {DIFFICULTY_SETTINGS[difficulty].label}</p>
               <button 
                 onClick={resetGame}
                 title="按 R 键重新开始"
@@ -337,6 +433,7 @@ export default function Page() {
                       <div key={index} className={styles.historyItem}>
                         <span className={styles.rank}>#{index + 1}</span>
                         <span className={styles.historyScore}>{record.score}分</span>
+                        <span className={styles.historyDifficulty}>{record.difficulty}</span>
                         <span className={styles.historyDate}>{record.date}</span>
                       </div>
                     ))
