@@ -20,6 +20,8 @@ export default function Page() {
   const [score, setScore] = useState(0);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Load history from localStorage on component mount
   useEffect(() => {
@@ -28,6 +30,33 @@ export default function Page() {
       setHistory(JSON.parse(savedHistory));
     }
   }, []);
+
+  // Simulate loading progress
+  useEffect(() => {
+    if (!showWelcome) return;
+
+    const interval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, 30);
+
+    return () => clearInterval(interval);
+  }, [showWelcome]);
+
+  // Hide welcome screen after loading
+  useEffect(() => {
+    if (loadingProgress === 100) {
+      const timeout = setTimeout(() => {
+        setShowWelcome(false);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loadingProgress]);
 
   const generateFood = useCallback(() => {
     const newFood = {
@@ -193,109 +222,134 @@ export default function Page() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>贪吃蛇</h1>
-      <div className={styles.header}>
-        <div className={styles.score}>得分: {score}</div>
-        <div className={styles.controls}>
-          {gameStarted && !gameOver && (
-            <button 
-              className={styles.controlButton}
-              onClick={togglePause}
-              title="空格键暂停/继续"
-            >
-              {isPaused ? '继续 (Enter)' : '暂停 (Space)'}
-            </button>
-          )}
-          <button 
-            className={styles.historyButton}
-            onClick={() => setShowHistory(true)}
-            title="按 H 键查看历史记录"
-          >
-            历史记录 (H)
-          </button>
-        </div>
-      </div>
-      <div className={styles.gameBoard}>
-        {Array.from({ length: 20 }, (_, y) =>
-          Array.from({ length: 20 }, (_, x) => {
-            const isSnake = snake.some(segment => segment.x === x && segment.y === y);
-            const isFood = food.x === x && food.y === y;
-            return (
-              <div
-                key={`${x}-${y}`}
-                className={`${styles.cell} ${isSnake ? styles.snake : ''} ${
-                  isFood ? styles.food : ''
-                }`}
+      {showWelcome ? (
+        <div className={styles.welcomeScreen}>
+          <div className={styles.welcomeContent}>
+            <div className={styles.snakeAnimation}>
+              <div className={styles.snakeHead} />
+              <div className={styles.snakeBody} />
+              <div className={styles.snakeBody} />
+              <div className={styles.snakeBody} />
+            </div>
+            <h1 className={styles.welcomeTitle}>贪吃蛇</h1>
+            <div className={styles.loadingBar}>
+              <div 
+                className={styles.loadingProgress} 
+                style={{ width: `${loadingProgress}%` }}
               />
-            );
-          })
-        )}
-        {!gameStarted && !gameOver && (
-          <div className={styles.startOverlay}>
-            <div className={styles.startContent}>
+            </div>
+            <p className={styles.loadingText}>
+              {loadingProgress < 100 ? '游戏加载中...' : '准备开始!'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h1 className={styles.title}>贪吃蛇</h1>
+          <div className={styles.header}>
+            <div className={styles.score}>得分: {score}</div>
+            <div className={styles.controls}>
+              {gameStarted && !gameOver && (
+                <button 
+                  className={styles.controlButton}
+                  onClick={togglePause}
+                  title="空格键暂停/继续"
+                >
+                  {isPaused ? '继续 (Enter)' : '暂停 (Space)'}
+                </button>
+              )}
               <button 
-                onClick={startGame} 
-                className={styles.startButton}
-                title="按 S 键开始游戏"
+                className={styles.historyButton}
+                onClick={() => setShowHistory(true)}
+                title="按 H 键查看历史记录"
               >
-                开始游戏 (S)
+                历史记录 (H)
               </button>
-              <div className={styles.keyboardHints}>
-                <p>⬆️⬇️⬅️➡️ 控制方向</p>
-                <p>Space 暂停/继续</p>
-                <p>H 历史记录</p>
+            </div>
+          </div>
+          <div className={styles.gameBoard}>
+            {Array.from({ length: 20 }, (_, y) =>
+              Array.from({ length: 20 }, (_, x) => {
+                const isSnake = snake.some(segment => segment.x === x && segment.y === y);
+                const isFood = food.x === x && food.y === y;
+                return (
+                  <div
+                    key={`${x}-${y}`}
+                    className={`${styles.cell} ${isSnake ? styles.snake : ''} ${
+                      isFood ? styles.food : ''
+                    }`}
+                  />
+                );
+              })
+            )}
+            {!gameStarted && !gameOver && (
+              <div className={styles.startOverlay}>
+                <div className={styles.startContent}>
+                  <button 
+                    onClick={startGame} 
+                    className={styles.startButton}
+                    title="按 S 键开始游戏"
+                  >
+                    开始游戏 (S)
+                  </button>
+                  <div className={styles.keyboardHints}>
+                    <p>⬆️⬇️⬅️➡️ 控制方向</p>
+                    <p>Space 暂停/继续</p>
+                    <p>H 历史记录</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {isPaused && (
+              <div className={styles.pauseOverlay}>
+                <div className={styles.pauseContent}>
+                  <h2>游戏暂停</h2>
+                  <p>按 Enter 继续游戏</p>
+                  <p>按 Esc 保持暂停</p>
+                </div>
+              </div>
+            )}
+          </div>
+          {gameOver && (
+            <div className={styles.gameOver}>
+              <h2>游戏结束!</h2>
+              <p>最终得分: {score}</p>
+              <button 
+                onClick={resetGame}
+                title="按 R 键重新开始"
+              >
+                重新开始 (R)
+              </button>
+            </div>
+          )}
+          {showHistory && (
+            <div className={styles.modal}>
+              <div className={styles.modalContent}>
+                <h2>历史最高分</h2>
+                <div className={styles.historyList}>
+                  {history.length > 0 ? (
+                    history.map((record, index) => (
+                      <div key={index} className={styles.historyItem}>
+                        <span className={styles.rank}>#{index + 1}</span>
+                        <span className={styles.historyScore}>{record.score}分</span>
+                        <span className={styles.historyDate}>{record.date}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>暂无记录</p>
+                  )}
+                </div>
+                <p className={styles.modalHint}>按 Esc 关闭</p>
+                <button 
+                  className={styles.closeButton}
+                  onClick={() => setShowHistory(false)}
+                >
+                  关闭
+                </button>
               </div>
             </div>
-          </div>
-        )}
-        {isPaused && (
-          <div className={styles.pauseOverlay}>
-            <div className={styles.pauseContent}>
-              <h2>游戏暂停</h2>
-              <p>按 Enter 继续游戏</p>
-              <p>按 Esc 保持暂停</p>
-            </div>
-          </div>
-        )}
-      </div>
-      {gameOver && (
-        <div className={styles.gameOver}>
-          <h2>游戏结束!</h2>
-          <p>最终得分: {score}</p>
-          <button 
-            onClick={resetGame}
-            title="按 R 键重新开始"
-          >
-            重新开始 (R)
-          </button>
-        </div>
-      )}
-      {showHistory && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <h2>历史最高分</h2>
-            <div className={styles.historyList}>
-              {history.length > 0 ? (
-                history.map((record, index) => (
-                  <div key={index} className={styles.historyItem}>
-                    <span className={styles.rank}>#{index + 1}</span>
-                    <span className={styles.historyScore}>{record.score}分</span>
-                    <span className={styles.historyDate}>{record.date}</span>
-                  </div>
-                ))
-              ) : (
-                <p>暂无记录</p>
-              )}
-            </div>
-            <p className={styles.modalHint}>按 Esc 关闭</p>
-            <button 
-              className={styles.closeButton}
-              onClick={() => setShowHistory(false)}
-            >
-              关闭
-            </button>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
